@@ -1,14 +1,11 @@
 class Matrix:
 	def __init__(self,matInput):
-		#print(matInput)
 		self.data = self.evaluateMatrixInput(matInput)
 		assert self.isValid(),"Matrix is not valid. Data input: "+str(self.data)
-		#assert(len(set([len(row) for row in self.data])) == 1),"Distinct row lengths: "+str(len(set([len(row) for row in self.data]))) #Rectangular matrix
 		self.numRows = len(self.data)
 		self.numCols = len(self.data[0])
 		self.isSquare = (self.numRows == self.numCols)
 		self.onlyOneEntry = (self.numRows == self.numCols == 1)
-		#self.ref = self.getRowEchelonForm()
 	def isValid(self):
 		rowLength = len(self.data[0])
 		for row in self.data:
@@ -26,12 +23,10 @@ class Matrix:
 			[[1,2,3],[4,5,6],[7,8,9]]
 				Or any combination of tuples
 		'''
-		#print("haha "+str(m))
 		if isinstance(m,str):
 			data = list()
 			m2 = m.replace('&',' ').replace(',',' ').replace('@',';')
 			rowsString = m2.split(';')
-			#print(str(rowsString))
 			for i in range(len(rowsString)):
 				rowString = rowsString[i]
 				colElements = [float(element) for element in rowString.split(' ')]
@@ -41,31 +36,16 @@ class Matrix:
 			assert isinstance(m[0],(list,tuple)),"m[0] is of type "+str(type(m[0]))
 			data = m
 			return data
-		#return tuple(data)
 	def getDiagonalVals(self):
 		return [self[rcNum,rcNum] for rcNum in range(min(self.numRows,self.numCols))]
 	def isDiagonal(self):
-		for rowNum in range(self.numRows):
-			for colNum in range(self.numCols):
-				if (rowNum != colNum and self[rowNum,colNum] != 0):
-					return False
-		return True
+		return self.isUpperTriangular() and self.isLowerTriangular()
 	def isUpperTriangular(self):
-		for rowNum in range(self.numRows):
-			for colNum in range(rowNum):
-				if self[rowNum,colNum] != 0:
-					return False
-		return True
+		return all([self[rowNum,colNum]==0 for rowNum in range(self.numRows) for colNum in range(rowNum)])
 	def isLowerTriangular(self):
-		for rowNum in range(self.numRows):
-			for colNum in range(rowNum+1,self.numCols):
-				if self[rowNum,colNum] != 0:
-					return False
-		return True
+		return all([self[rowNum,colNum]==0 for rowNum in range(self.numRows) for colNum in range(rowNum+1,self.numCols)])
 	def getREF(self):
-		#print('Getting REF of: \n'+str(self))
 		def numLeadingZeroes(row):
-			#return (x==0 for x in row).index(False)
 			for i in range(len(row)):
 				if not row[i]==0:
 					return i
@@ -74,33 +54,20 @@ class Matrix:
 		for upperRowNum in range(min(len(ref),len(ref[0]))): #Changed this with min
 			colIndex = upperRowNum
 			for lowerRowNum in range(upperRowNum+1,len(ref)):
-				#print('lowerRowNum: '+str(lowerRowNum))
-				#print('upperRowNum: '+str(upperRowNum))
-				#print('colIndex: '+str(colIndex))
-				#print('Thing: \n'+str(self))
 				if ref[lowerRowNum][colIndex] != 0 and ref[upperRowNum][colIndex] != 0:
 					multBy = ref[lowerRowNum][colIndex] / ref[upperRowNum][colIndex]
 					for j in range(len(ref[lowerRowNum])):
 						ref[lowerRowNum][j] -= multBy*ref[upperRowNum][j]
 		return Matrix(ref)
 	def getRREF(self):
-		thing1 = self.getREF()
-		#print("thing1: \n"+str(thing1))
-		thing2 = thing1.flipflopped()
-		#print("thing2: \n"+str(thing2))
-		thing3 = thing2.getREF() #Freaking out on this line
-		#print("thing3: \n"+str(thing3))
-		thing4 = thing3.flipflopped()
-		thing5 = thing4.getREF()
-		return thing5
-		#return self.getREF().transpose().getREF().transpose()
-		
-		#for rowNum in range(bd.numRows):
-		#	divideBy = bd[rowNum,rowNum]
-		#	if divideBy != 0:
-		#		for colNum in range(bd.numCols):
-		#			bd[rowNum,colNum] = bd[rowNum,colNum] / divideBy
-		#return bd
+		m = self.getREF().flipflopped().getREF().flipflopped().getREF()
+		for rowNum in range(m.numRows):
+			fnz = Matrix.firstNonzero(m.data[rowNum])
+			if fnz is not None:
+				divisor = m.data[rowNum][fnz]
+				for colNum in range(m.numCols):
+					m.data[rowNum][colNum] = m.data[rowNum][colNum]/divisor
+		return m
 	def flipflopped(self):
 		#Rotate horizontally and vertically. Not the same as transpose.
 		return Matrix([list(reversed(row)) for row in reversed(self.data)])
@@ -185,18 +152,9 @@ class Matrix:
 			return Matrix.firstNonzero(row) == len(row)-1
 		def hasOneNonzeroVar(row):
 			return len([True for index in range(len(row)-1) if row[index] != 0]) == 1
-		print("\n\n\n\n\n")
+		#print("\n\n\n\n\n")
 		m = self.withExtendedCol(vec).getRREF().withoutZeroRows()
-		print("m: \n"+str(m))
-		#print('m: \n'+str(m))
-		#sVec = [None]*len(vec)
-		#print(str(m))
-		#print("numCols: "+str(m.numCols))
 		sVec = [None]*(m.numCols-1) #solution vector (will not only contain numbers)
-		#print("sVec mid: "+str(sVec))
-		
-		
-		
 		for row in m.data:
 			if hasOneNonzeroLastRow(row):
 				return None #This means that we have an impossible situation
@@ -205,13 +163,9 @@ class Matrix:
 				sVec[nonzeroIndex] = row[len(row)-1]/row[nonzeroIndex]
 		colNumsWithPivots = list(set([Matrix.firstNonzero(row) for row in m.data if Matrix.firstNonzero(row) is not None]))
 		colNumsWithoutPivots = [colNum for colNum in range(m.numCols-1) if colNum not in colNumsWithPivots]
-		print('colWithout: '+str(colNumsWithoutPivots))
-		#rowNumsOneVar = [rowNum for rowNum in range(m.numRows) if len([element for element in m.data[rowNum] if element != 0 and ])]
 		for colNum in colNumsWithoutPivots:
 			sVec[colNum] = MParam('Param'+str(colNum))
 		noneIndeces = [index for index in range(len(sVec)) if sVec[index] is None]
-		print('sVec before none: '+str(sVec))
-		print("noneIndeces: "+str(noneIndeces))
 		for noneIndex in noneIndeces:
 			for rowNum in range(m.numRows):
 				row = m.data[rowNum]
@@ -226,26 +180,23 @@ class Matrix:
 								resultant = resultant - MParam(row[colNum])*MParam(sVec[colNum])
 					resultant = resultant / row[noneIndex]
 					sVec[noneIndex] = resultant
-			
-		#for rowNum in rowNumsOneVar:
-		#	print("\n\n\nMatrix: \n"+str(self))
-		#	print("rowNum: "+str(rowNum))
-		#	print("colNum: "+str(colNum))
-		#	colNum = Matrix.firstNonzero(m.data[rowNum])
-		#	sVec[colNum] = m[rowNum,m.numCols-1]/m[rowNum,colNum]
-		#remainingRows = 
-		#Is there anything else we need to do?
-		print("\n\n\n\n\n")
 		return sVec
 	def nullSpace(self):
 		return self.vectorSolutions([0]*self.numRows)
-		
-		
-		
-		
-		
-		
-		
+	'''
+	def timesVector(self,vec):
+		#assert(len(vec) == self.numCols),"Attempted to multiply "+str(self)+" by "+str(vec)+", but the inner dimensions do not match."
+		#solutionVec = [None]*
+		vecAsMatFlip = Matrix([[element] for element in vec])
+		return self.timesMatrix(vecAsMatFlip)
+	def timesMatrix(self,m):
+		assert(self.numCols == m.numRows),"Attempted to multiply "+str(self)+" by "+str(m)+", but the inner dimensions do not match."
+		solutionMatrix = 
+	def dominantEigenValue(self,numIters=10):
+		initialApprox = [1]*self.numRows
+		for iter in range(numIters):
+	'''
+			
 	@staticmethod
 	def firstNonzero(vec):
 		for index in range(len(vec)):
